@@ -15,7 +15,7 @@
             position: absolute;
             top: 0;
             bottom: 0;
-            right: 50%;
+            right: 99.9%;
             left: 0;
         }
 
@@ -25,14 +25,14 @@
             top: 50px;
             bottom: 0;
             right: 0;
-            left: 50%;
+            left: 0.1%;
             overflow: scroll;
         }
 
         #options {
             margin: 0;
             position: fixed;
-            left: 50%;
+            left: 0.1%;
             width: 100%;
         }
 
@@ -50,10 +50,6 @@
 
         #options #raw.disabled {
             opacity: 0.5;
-        }
-
-        #shareurl {
-            display: none;
         }
 
         #status {
@@ -171,21 +167,14 @@
     </label>
 
     <label>
-        <input type="button" value="Share" id="share">
+        <input type="button" value="Show Source" id="source">
     </label>
-
-    <input type="input" value="" id="shareurl">
 
 </div>
 <div id="review">
     <div id="error"></div>
 </div>
 <div id="status"></div>
-<div class="github-fork-ribbon-wrapper right">
-    <div class="github-fork-ribbon">
-        <a href="https://github.com/dreampuf/graphvizonline">Fork me on GitHub</a>
-    </div>
-</div>
 
 <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
 <script>
@@ -204,8 +193,7 @@
       formatEl = document.querySelector("#format select"),
       engineEl = document.querySelector("#engine select"),
       rawEl = document.querySelector("#raw input"),
-      shareEl = document.querySelector("#share"),
-      shareURLEl = document.querySelector("#shareurl"),
+      sourceEl = document.querySelector("#source"),
       errorEl = document.querySelector("#error");
 
     function show_status(text, hide) {
@@ -259,26 +247,24 @@
       svgImage.src = svgXml;
     }
 
-    function copyShareURL(e) {
-      var content = encodeURIComponent(editor.getSession().getDocument().getValue());
-
-      var xhr = new XMLHttpRequest();
-      xhr.open("POST", "https://api-ssl.bitly.com/v4/shorten", true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      /* love and peace; don't let me down :) */
-      xhr.setRequestHeader('Authorization', 'Bearer 5959ae0ffc42f5e6b8cee4ebf1b7ee0218bfc291');
-      xhr.send(JSON.stringify({ "long_url": "https://dreampuf.github.io/GraphvizOnline/#" + content}));
-      xhr.onreadystatechange = function () {
-        if (this.readyState != 4) return;
-
-        shareURLEl.style.display = "inline";
-        if (this.status >= 200 && this.status < 300 && this.responseText.indexOf('"link":') >= 0) {
-          var result = JSON.parse(this.responseText);
-          shareURLEl.value = result.link;
-        } else {
-          shareURLEl.value = "https://dreampuf.github.io/GraphvizOnline/#" + content
-        }
-      };
+    function toggleSource(e) {
+      var editor = document.getElementById('editor');
+      var review = document.getElementById('review');
+      var options = document.getElementById('options');
+      var sourceBtn = document.getElementById('source');
+      if (hiddenSource){
+          editor.style.right = "50%";
+          review.style.left = "50%";
+          options.style.left = "50%";
+		  sourceBtn.value = "Hide source";
+      } else {
+          editor.style.right = "100%";
+          review.style.left = "0%";
+          options.style.left = "0%";
+		  sourceBtn.value = "Show source";
+      }
+	  
+      hiddenSource = !hiddenSource;
     }
 
     function copyToClipboard(str) {
@@ -419,7 +405,7 @@
     formatEl.addEventListener("change", renderGraph);
     engineEl.addEventListener("change", renderGraph);
     rawEl.addEventListener("change", renderGraph);
-    share.addEventListener("click", copyShareURL);
+    source.addEventListener("click", toggleSource);
 
 
     /* come from sharing */
@@ -430,6 +416,7 @@
     /* Init */
     if (editor.getValue()) {
       renderGraph();
+      var hiddenSource=true;
     }
   })(document);
 </script>

@@ -166,10 +166,6 @@
         <input type="checkbox" disabled=""> Show raw output
     </label>
 
-    <label>
-        <input type="button" value="Show Source" id="source">
-    </label>
-
 </div>
 <div id="review">
     <div id="error"></div>
@@ -193,8 +189,21 @@
       formatEl = document.querySelector("#format select"),
       engineEl = document.querySelector("#engine select"),
       rawEl = document.querySelector("#raw input"),
-      sourceEl = document.querySelector("#source"),
       errorEl = document.querySelector("#error");
+	  
+	  var qs = (function(a) {
+    if (a == "") return {};
+    var b = {};
+    for (var i = 0; i < a.length; ++i)
+    {
+        var p=a[i].split('=', 2);
+        if (p.length == 1)
+            b[p[0]] = "";
+        else
+            b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, " "));
+    }
+    return b;
+    })(window.location.search.substr(1).split('&'));
 
     function show_status(text, hide) {
       hide = hide || 0;
@@ -247,26 +256,6 @@
       svgImage.src = svgXml;
     }
 
-    function toggleSource(e) {
-      var editor = document.getElementById('editor');
-      var review = document.getElementById('review');
-      var options = document.getElementById('options');
-      var sourceBtn = document.getElementById('source');
-      if (hiddenSource){
-          editor.style.right = "50%";
-          review.style.left = "50%";
-          options.style.left = "50%";
-		  sourceBtn.value = "Hide source";
-      } else {
-          editor.style.right = "100%";
-          review.style.left = "0%";
-          options.style.left = "0%";
-		  sourceBtn.value = "Show source";
-      }
-	  
-      hiddenSource = !hiddenSource;
-    }
-
     function copyToClipboard(str) {
       const el = document.createElement('textarea');
       el.value = str;
@@ -311,10 +300,15 @@
       worker.addEventListener('error', function (e) {
         show_error(e.detail);
       }, false);
-
+	  
+	  //Load File
+	  var file = qs["graph"];
+      fetch(file)
+        .then(response => response.text())
+        .then((data) => {
       show_status("rendering...");
       var params = {
-        "src": editor.getSession().getDocument().getValue(),
+        "src": data,//editor.getSession().getDocument().getValue(),
         "id": new Date().toJSON(),
         "options": {
           "files": [],
@@ -323,12 +317,26 @@
         },
       };
       worker.postMessage(params);
+      })
+
+//      show_status("rendering...");
+//      var params = {
+//        "src": editor.getSession().getDocument().getValue(),
+//        "id": new Date().toJSON(),
+//        "options": {
+//          "files": [],
+//          "format": formatEl.value === "png-image-element" ? "svg" : formatEl.value,
+//          "engine": engineEl.value
+//        },
+//      };
+//      worker.postMessage(params);
     }
 
-    function updateState() {
-      var content = encodeURIComponent(editor.getSession().getDocument().getValue());
-      history.pushState({"content": content}, "", "#" + content)
-    }
+///    function updateState() {
+///	debugger;
+///      var content = encodeURIComponent(editor.getSession().getDocument().getValue());
+///      history.pushState({"content": content}, "", "#" + content)
+///    }
 
     function updateOutput(result) {
       if (formatEl.value === "svg") {
@@ -386,7 +394,7 @@
         reviewer.appendChild(text);
       }
 
-      updateState()
+      //updateState()
     }
 
     editor.setTheme("ace/theme/twilight");
@@ -397,6 +405,7 @@
     });
 
     window.onpopstate = function(event) {
+	debugger;
       if (event.state != null && event.state.content != undefined) {
         editor.getSession().setValue(decodeURIComponent(event.state.content));
       }
@@ -405,18 +414,17 @@
     formatEl.addEventListener("change", renderGraph);
     engineEl.addEventListener("change", renderGraph);
     rawEl.addEventListener("change", renderGraph);
-    source.addEventListener("click", toggleSource);
 
 
     /* come from sharing */
     if (location.hash.length > 1) {
+	debugger;
       editor.getSession().setValue(decodeURIComponent(location.hash.substring(1)));
     }
 
     /* Init */
     if (editor.getValue()) {
       renderGraph();
-      var hiddenSource=true;
     }
   })(document);
 </script>

@@ -17,7 +17,7 @@
             bottom: 0;
             right: 99.9%;
             left: 0;
-	    display: none;
+			display: none;
         }
 
         #review {
@@ -111,33 +111,12 @@
     </style>
 </head>
 <body>
+
 <pre id="editor">digraph G {
+a->b
+}
+</pre>
 
-  subgraph cluster_0 {
-    style=filled;
-    color=lightgrey;
-    node [style=filled,color=white];
-    a0 -> a1 -> a2 -> a3;
-    label = "process #1";
-  }
-
-  subgraph cluster_1 {
-    node [style=filled];
-    b0 -> b1 -> b2 -> b3;
-    label = "process #2";
-    color=blue
-  }
-  start -> a0;
-  start -> b0;
-  a1 -> b3;
-  b2 -> a3;
-  a3 -> a0;
-  a3 -> end;
-  b3 -> end;
-
-  start [shape=Mdiamond];
-  end [shape=Msquare];
-}</pre>
 <div id="options">
     <label id="engine">
         Engine:
@@ -190,9 +169,11 @@
       formatEl = document.querySelector("#format select"),
       engineEl = document.querySelector("#engine select"),
       rawEl = document.querySelector("#raw input"),
-      errorEl = document.querySelector("#error");
-	  
-	  var qs = (function(a) {
+      errorEl = document.querySelector("#error"),
+      graphData = "",
+	  graphLastModified = "";
+      
+    var qs = (function(a) {
     if (a == "") return {};
     var b = {};
     for (var i = 0; i < a.length; ++i)
@@ -257,27 +238,6 @@
       svgImage.src = svgXml;
     }
 
-    function copyToClipboard(str) {
-      const el = document.createElement('textarea');
-      el.value = str;
-      el.setAttribute('readonly', '');
-      el.style.position = 'absolute';
-      el.style.left = '-9999px';
-      document.body.appendChild(el);
-      const selected =
-        document.getSelection().rangeCount > 0
-          ? document.getSelection().getRangeAt(0)
-          : false;
-      el.select();
-      var result = document.execCommand('copy')
-      document.body.removeChild(el);
-      if (selected) {
-        document.getSelection().removeAllRanges();
-        document.getSelection().addRange(selected);
-      }
-      return result;
-    };
-
     function renderGraph() {
       reviewer.classList.add("working");
       reviewer.classList.remove("error");
@@ -301,15 +261,10 @@
       worker.addEventListener('error', function (e) {
         show_error(e.detail);
       }, false);
-	  
-	  //Load File
-	  var file = qs["graph"];
-      fetch(file)
-        .then(response => response.text())
-        .then((data) => {
+      
       show_status("rendering...");
       var params = {
-        "src": data,//editor.getSession().getDocument().getValue(),
+        "src": graphData,
         "id": new Date().toJSON(),
         "options": {
           "files": [],
@@ -318,26 +273,7 @@
         },
       };
       worker.postMessage(params);
-      })
-
-//      show_status("rendering...");
-//      var params = {
-//        "src": editor.getSession().getDocument().getValue(),
-//        "id": new Date().toJSON(),
-//        "options": {
-//          "files": [],
-//          "format": formatEl.value === "png-image-element" ? "svg" : formatEl.value,
-//          "engine": engineEl.value
-//        },
-//      };
-//      worker.postMessage(params);
     }
-
-///    function updateState() {
-///	debugger;
-///      var content = encodeURIComponent(editor.getSession().getDocument().getValue());
-///      history.pushState({"content": content}, "", "#" + content)
-///    }
 
     function updateOutput(result) {
       if (formatEl.value === "svg") {
@@ -394,16 +330,10 @@
         text.appendChild(document.createTextNode(result));
         reviewer.appendChild(text);
       }
-
-      //updateState()
     }
 
     editor.setTheme("ace/theme/twilight");
     editor.getSession().setMode("ace/mode/dot");
-    editor.getSession().on("change", function () {
-      clearTimeout(lastHD);
-      lastHD = setTimeout(renderGraph, 1500);
-    });
 
     window.onpopstate = function(event) {
 	debugger;
@@ -411,11 +341,6 @@
         editor.getSession().setValue(decodeURIComponent(event.state.content));
       }
     };
-
-    formatEl.addEventListener("change", renderGraph);
-    engineEl.addEventListener("change", renderGraph);
-    rawEl.addEventListener("change", renderGraph);
-
 
     /* come from sharing */
     if (location.hash.length > 1) {
@@ -427,7 +352,41 @@
     if (editor.getValue()) {
       renderGraph();
     }
+
+    //disable cache
+    var nocachHeaders = new Headers();
+    nocachHeaders.append('pragma', 'no-cache');
+    nocachHeaders.append('cache-control', 'no-cache');
+    
+    var reqInit = {
+      method: 'GET',
+      headers: nocachHeaders,
+    };
+    
+    function refresh() {
+    var graphRequest = new Request(qs["graph"]);
+    //Load File
+    fetch(graphRequest, reqInit)
+      .then(response => {
+         lastMod = response.headers.get("last-modified")
+         if (lastMod != graphLastModified){
+           graphLastModified = lastMod;
+           return response.text();
+         } else {
+           return graphData;
+         }
+       })
+      .then((data) => {
+          if (data != graphData){
+            graphData = data;
+            renderGraph();
+          }
+    });
+    setTimeout(refresh, 1000);
+    }
+    refresh();
   })(document);
+  
 </script>
 <script src="viz.js" type="text/javascript" charset="utf-8"></script>
 </body>
